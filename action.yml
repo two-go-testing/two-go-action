@@ -1,0 +1,41 @@
+name: two-go API tests
+description: Install dependencies and run a project's two-go API tests.
+branding:
+  icon: check-circle
+  color: green
+
+inputs:
+  node-version:
+    description: Node.js version to set up before running the tests.
+    required: false
+    default: "20"
+  working-directory:
+    description: Directory that contains the project to install and test.
+    required: false
+    default: "."
+  install-command:
+    description: Command used to install project dependencies.
+    required: false
+    default: "npm ci"
+  test-command:
+    description: Command used to run the two-go tests.
+    required: false
+    default: "npm test"
+
+runs:
+  using: composite
+  steps:
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ inputs.node-version }}
+
+    - name: Install dependencies
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: ${{ inputs.install-command }}
+
+    - name: Run two-go tests
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: ${{ inputs.test-command }}

@@ -1,0 +1,48 @@
+name: Example
+
+# This example workflow demonstrates using the action from within this repo.
+# It creates a tiny sample project in a subdirectory, then runs the local
+# action (uses: ./) against it with explicit inputs.
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  run-action:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Create a minimal sample project
+        run: |
+          mkdir -p sample
+          cat > sample/package.json <<'EOF'
+          {
+            "name": "sample",
+            "version": "1.0.0",
+            "private": true,
+            "scripts": {
+              "test": "node --test"
+            }
+          }
+          EOF
+          mkdir -p sample/test
+          cat > sample/test/smoke.test.js <<'EOF'
+          const { test } = require("node:test");
+          const assert = require("node:assert");
+
+          test("sample smoke test", () => {
+            assert.strictEqual(1 + 1, 2);
+          });
+          EOF
+
+      - name: Run two-go action against the sample project
+        uses: ./
+        with:
+          node-version: "20"
+          working-directory: sample
+          install-command: npm install
+          test-command: npm test
