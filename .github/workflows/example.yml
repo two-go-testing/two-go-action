@@ -1,8 +1,9 @@
 name: Example
 
 # This example workflow demonstrates using the action from within this repo.
-# It creates a tiny sample project in a subdirectory, then runs the local
-# action (uses: ./) against it with explicit inputs.
+# It creates a tiny two-go project in a subdirectory, then runs the local
+# action (uses: ./) against it with explicit inputs. The sample has no lockfile,
+# so it installs with `npm install` instead of the default `npm ci`.
 
 on:
   push:
@@ -16,7 +17,7 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
-      - name: Create a minimal sample project
+      - name: Create a minimal two-go sample project
         run: |
           mkdir -p sample
           cat > sample/package.json <<'EOF'
@@ -24,18 +25,42 @@ jobs:
             "name": "sample",
             "version": "1.0.0",
             "private": true,
+            "type": "module",
             "scripts": {
               "test": "node --test"
+            },
+            "dependencies": {
+              "two-go": "^2.0.0"
             }
           }
           EOF
-          mkdir -p sample/test
-          cat > sample/test/smoke.test.js <<'EOF'
-          const { test } = require("node:test");
-          const assert = require("node:assert");
+          cat > sample/api.test.mjs <<'EOF'
+          // Hermetic two-go test: starts a local server so CI needs no network API.
+          import { test, before, after } from "node:test";
+          import { createServer } from "node:http";
+          import { go } from "two-go";
 
-          test("sample smoke test", () => {
-            assert.strictEqual(1 + 1, 2);
+          let server;
+          let api;
+
+          before(async () => {
+            server = createServer((req, res) => {
+              res.setHeader("content-type", "application/json");
+              res.end(JSON.stringify({ id: 1, path: req.url }));
+            });
+            await new Promise((resolve) => server.listen(0, resolve));
+            api = go(`http://localhost:${server.address().port}`);
+          });
+
+          after(() => server.close());
+
+          test("GET /todos/1 returns JSON", async () => {
+            await api
+              .get("/todos/1")
+              .expectStatus(200)
+              .expectHeader("content-type", /json/)
+              .expectJson("id", 1)
+              .expectJson("path", "/todos/1");
           });
           EOF
 
